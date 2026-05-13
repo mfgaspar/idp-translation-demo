@@ -9,3 +9,4 @@ dist/
 *.egg-info/
 var/
 apps/api/build/
+node_modules/
