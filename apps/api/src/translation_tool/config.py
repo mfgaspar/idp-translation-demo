@@ -13,3 +13,8 @@ class Settings(BaseSettings):
     )
     allow_evidence_export: bool = Field(default=True)
     max_upload_bytes: int = Field(default=25 * 1024 * 1024)
+    auth_mode: str = Field(default="none", description="none | required (stub)")
+    llm_provider: str = Field(default="mock", description="mock | openai_compatible")
+    llm_base_url: str = Field(default="http://localhost:11434/v1")
+    llm_api_key: str = Field(default="")
+    llm_model: str = Field(default="gpt-4o-mini")

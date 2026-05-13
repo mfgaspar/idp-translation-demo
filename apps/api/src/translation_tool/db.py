@@ -7,11 +7,13 @@ from translation_tool.config import Settings
 
 _engine = None
 _SessionLocal = None
+_engine_url: str | None = None
 
 
 def get_engine(settings: Settings):
-    global _engine, _SessionLocal
-    if _engine is None:
+    global _engine, _SessionLocal, _engine_url
+    if _engine is None or _engine_url != settings.database_url:
+        _engine_url = settings.database_url
         _engine = create_engine(settings.database_url, future=True)
         _SessionLocal = sessionmaker(bind=_engine, autoflush=False, autocommit=False, future=True)
     return _engine
