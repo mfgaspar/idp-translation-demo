@@ -1,12 +1,14 @@
-# Local and single-host deployment: API + web front (nginx proxies /cases and /health to API).
-# For registry images after CI, set API_IMAGE and WEB_IMAGE then use compose override or
-# `docker compose pull` once those images exist on GHCR.
+# Pull-only stack for a host that runs images from GHCR (after CI publishes them).
+#
+#   export API_IMAGE=ghcr.io/<owner>/<repo>-api:latest
+#   export WEB_IMAGE=ghcr.io/<owner>/<repo>-web:latest
+#   docker compose -f docker-compose.registry.yml up -d
+#
+# Defaults are placeholders; you must set API_IMAGE and WEB_IMAGE.
 
 services:
   api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+    image: ${API_IMAGE:?Set API_IMAGE to your GHCR API image, e.g. ghcr.io/org/repo-api:latest}
     environment:
       DATABASE_URL: sqlite:////data/app.db
       STORAGE_ROOT: /data/storage
@@ -29,9 +31,7 @@ services:
       start_period: 25s
 
   web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+    image: ${WEB_IMAGE:?Set WEB_IMAGE to your GHCR web image, e.g. ghcr.io/org/repo-web:latest}
     ports:
       - "${WEB_PORT:-8080}:80"
     depends_on:
