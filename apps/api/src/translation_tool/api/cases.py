@@ -18,13 +18,14 @@ from translation_tool.api.schemas import (
     ReviewBody,
     ReviewBulkBody,
     ViewerOut,
+    ViewerPageLayoutRect,
     ViewerSegment,
 )
 from translation_tool.config import Settings
 from translation_tool.models.orm import AuditEvent, Case, Document, Segment
 from translation_tool.services.audit import record_event
 from translation_tool.services.ingestion import ingest_bytes
-from translation_tool.services.extraction import OcrUnavailableError
+from translation_tool.services.extraction import OcrUnavailableError, layout_page_rects
 from translation_tool.services.orchestrator import process_document
 from translation_tool.services.policy import evidence_export_allowed
 from translation_tool.services.translation_provider import TranslationUpstreamError, get_translation_provider
@@ -288,10 +289,15 @@ def viewer(case_id: int, db: Session = Depends(get_db), _actor: str = Depends(ge
             resolved_src = max(set(langs), key=langs.count) if langs else None
         elif doc.source_language and doc.source_language != "auto":
             resolved_src = doc.source_language
+    layout_rects: list[ViewerPageLayoutRect] = []
+    if doc is not None:
+        for pn, rw, rh in layout_page_rects(doc.storage_path):
+            layout_rects.append(ViewerPageLayoutRect(page_number=pn, width=rw, height=rh))
     return ViewerOut(
         case_id=case_id,
         document_id=doc_id,
         original_file_url=file_url,
+        original_filename=doc.original_filename if doc else None,
         content_type=content_type,
         source_language=src_lang,
         target_language=tgt_lang,
@@ -308,6 +314,7 @@ def viewer(case_id: int, db: Session = Depends(get_db), _actor: str = Depends(ge
             )
             for s in segs
         ],
+        page_layout_rects=layout_rects,
     )
 
 
@@ -327,6 +334,8 @@ def review(
         seg.status = "approved"
     elif body.action == "reject":
         seg.status = "rejected"
+    elif body.action == "pending":
+        seg.status = "auto"
     elif body.action == "edit":
         if body.edited_text is None:
             raise HTTPException(status_code=400, detail="edited_text required for edit")
@@ -404,6 +413,8 @@ def evidence(case_id: int, db: Session = Depends(get_db), settings: Settings = D
         "source_language": latest.source_language if latest else None,
         "target_language": latest.target_language if latest else None,
         "primary_language": primary_language,
+        "latest_document_content_type": latest.content_type if latest else None,
+        "latest_document_original_filename": latest.original_filename if latest else None,
         "segment_review_complete": segment_review_complete,
         "latest_document_segment_count": len(doc_segs_latest),
         "segment_counts": {
@@ -419,7 +430,7 @@ def evidence(case_id: int, db: Session = Depends(get_db), settings: Settings = D
                 "sha256": d.sha256_hex,
                 "document_id": d.id,
             }
-            for d in docs
+            for d in sorted(docs, key=lambda x: x.id)
         ],
         "segments": [
             {

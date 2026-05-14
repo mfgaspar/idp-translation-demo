@@ -46,6 +46,7 @@ def test_viewer_segments_match_latest_document_only(client, tmp_path):
     v = client.get(f"/cases/{cid}/viewer")
     assert v.status_code == 200
     body = v.json()
+    assert body.get("page_layout_rects") and len(body["page_layout_rects"]) >= 1
     texts = " ".join(s["extracted_text"] + s["translated_text"] for s in body["segments"])
     assert "BBB_UNIQUE_NEW" in texts
     assert "AAA_UNIQUE_OLD" not in texts
@@ -150,6 +151,29 @@ def test_review_bulk_approve_all(client, tmp_path):
     listed = next(x for x in client.get("/cases/").json() if x["id"] == cid)
     assert listed["segment_review_complete"] is True
     assert listed["review_pending"] == 0
+
+
+def test_review_pending(client, tmp_path):
+    r = client.post("/cases/", json={"external_ref": "R-PEND"})
+    cid = r.json()["id"]
+    p = tmp_path / "d2.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "First line\nSecond line", fontsize=12)
+    doc.save(p)
+    doc.close()
+    doc_id = client.post(f"/cases/{cid}/documents", files={"file": ("d2.pdf", p.read_bytes(), "application/pdf")}).json()["id"]
+    client.post(f"/cases/{cid}/process", json={"document_id": doc_id})
+    segs = client.get(f"/cases/{cid}/viewer").json()["segments"]
+    assert len(segs) >= 2, "need two segments so approving one does not archive the case"
+    seg_id = segs[0]["segment_id"]
+    assert client.post(f"/cases/{cid}/review", json={"segment_id": seg_id, "action": "approve"}).status_code == 200
+    r2 = client.post(f"/cases/{cid}/review", json={"segment_id": seg_id, "action": "pending"})
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["status"] == "auto"
+    listed = next(x for x in client.get("/cases/").json() if x["id"] == cid)
+    assert listed["review_pending"] >= 1
+    assert listed["segment_review_complete"] is False
 
 
 def test_review_approve(client, tmp_path):

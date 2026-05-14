@@ -53,7 +53,7 @@ class ProcessBody(BaseModel):
 
 class ReviewBody(BaseModel):
     segment_id: str
-    action: str  # approve | reject | edit
+    action: str  # approve | reject | pending | edit
     edited_text: str | None = None
 
 
@@ -73,10 +73,19 @@ class ViewerSegment(BaseModel):
     status: str
 
 
+class ViewerPageLayoutRect(BaseModel):
+    """Page size in the same user-space units as ``ViewerSegment.bbox`` (PyMuPDF ``page.rect``)."""
+
+    page_number: int = Field(ge=1)
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+
+
 class ViewerOut(BaseModel):
     case_id: int
     document_id: int | None
     original_file_url: str | None
+    original_filename: str | None = None
     content_type: str | None = None
     source_language: str | None = None
     target_language: str | None = None
@@ -85,3 +94,7 @@ class ViewerOut(BaseModel):
         description="Dominant detected source when source_language was auto; otherwise the chosen source code.",
     )
     segments: list[ViewerSegment]
+    page_layout_rects: list[ViewerPageLayoutRect] = Field(
+        default_factory=list,
+        description="Per-page layout size for mapping bbox to the viewer; matches extraction coordinates.",
+    )

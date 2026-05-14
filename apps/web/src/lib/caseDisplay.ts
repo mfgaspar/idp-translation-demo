@@ -7,7 +7,7 @@ export function documentTypeLabel(contentType: string | null, filename: string |
     if (f.includes('bank') || f.includes('statement')) return 'Bank statement'
     return 'PDF document'
   }
-  if (contentType === 'image/png' || contentType === 'image/jpeg') return 'Exchange screenshot'
+  if (contentType === 'image/png' || contentType === 'image/jpeg' || contentType === 'image/jpg') return 'Image'
   if (contentType) return 'Document'
   return 'No document'
 }
@@ -24,7 +24,8 @@ export function docRowIcon(
     return { icon: 'picture_as_pdf', color: 'text-brand-teal', shortLabel: 'PDF' }
   }
   if (contentType === 'image/png') return { icon: 'image', color: 'text-brand-orange', shortLabel: 'PNG' }
-  if (contentType === 'image/jpeg') return { icon: 'image', color: 'text-brand-orange', shortLabel: 'JPEG' }
+  if (contentType === 'image/jpeg' || contentType === 'image/jpg')
+    return { icon: 'image', color: 'text-brand-orange', shortLabel: 'JPEG' }
   if (contentType?.startsWith('image/')) return { icon: 'image', color: 'text-brand-orange', shortLabel: 'Image' }
   if (!contentType) return { icon: 'draft', color: 'text-outline', shortLabel: 'No file' }
   return { icon: 'draft', color: 'text-brand-pink', shortLabel: 'File' }

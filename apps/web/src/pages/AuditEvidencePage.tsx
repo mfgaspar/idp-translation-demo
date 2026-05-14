@@ -1,5 +1,6 @@
 import { startTransition, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { translationDirectionTags } from '../lib/caseDisplay'
+import { DocumentTypeIcon } from '../lib/DocumentTypeIcon'
+import { documentTypeLabel, translationDirectionTags } from '../lib/caseDisplay'
 
 type InputReference = {
   type: string
@@ -32,6 +33,8 @@ type EvidencePayload = {
   source_language: string | null
   target_language: string | null
   primary_language: string | null
+  latest_document_content_type: string | null
+  latest_document_original_filename: string | null
   segment_counts: SegmentCounts
   input_references: InputReference[]
   segments: unknown[]
@@ -119,6 +122,11 @@ function parseEvidencePayload(raw: unknown): EvidencePayload | null {
   const source_language = parseOptionalStringField(raw, 'source_language')
   const target_language = parseOptionalStringField(raw, 'target_language')
   const primary_language = parseOptionalStringField(raw, 'primary_language')
+  const ctFromApi = parseOptionalStringField(raw, 'latest_document_content_type')
+  const fnFromApi = parseOptionalStringField(raw, 'latest_document_original_filename')
+  const lastRef = input_references.length > 0 ? input_references[input_references.length - 1] : null
+  const latest_document_content_type = ctFromApi ?? lastRef?.type ?? null
+  const latest_document_original_filename = fnFromApi ?? lastRef?.filename ?? null
   const segment_counts = parseSegmentCounts(raw, segments)
   const srcComplete = raw.segment_review_complete
   const segment_review_complete = typeof srcComplete === 'boolean' ? srcComplete : false
@@ -144,6 +152,8 @@ function parseEvidencePayload(raw: unknown): EvidencePayload | null {
     source_language,
     target_language,
     primary_language,
+    latest_document_content_type,
+    latest_document_original_filename,
     segment_counts,
     input_references,
     segments,
@@ -608,35 +618,66 @@ export function AuditEvidencePage({ initialCaseId, onOpenWorkspace, workspaceDis
               ) : null}
             </div>
             <CaseLifecycleBanner evidence={evidence} />
-            <div className="grid gap-md p-lg sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-hairline bg-surface-soft p-md">
-                <p className="text-xs font-semibold uppercase tracking-wide text-outline">Case ID</p>
-                <p className="mt-xs text-lg font-semibold text-on-background">{evidence.case_id}</p>
+            <div className="flex flex-col gap-md p-lg">
+              <div className="grid gap-md grid-cols-1 lg:grid-cols-12">
+                <div className="rounded-xl border border-hairline bg-surface-soft p-md lg:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-outline">Case ID</p>
+                  <p className="mt-xs text-lg font-semibold text-on-background">{evidence.case_id}</p>
+                </div>
+                <div className="rounded-xl border border-hairline bg-surface-soft p-md lg:col-span-10">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-outline">External reference</p>
+                  <p className="mt-xs break-all text-sm font-medium text-on-surface">
+                    {evidence.external_ref?.trim() ? evidence.external_ref : '—'}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-xl border border-hairline bg-surface-soft p-md sm:col-span-2 lg:col-span-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-outline">External reference</p>
-                <p className="mt-xs break-all text-sm font-medium text-on-surface">
-                  {evidence.external_ref?.trim() ? evidence.external_ref : '—'}
-                </p>
-              </div>
-              <div className="rounded-xl border border-hairline bg-surface-soft p-md">
-                <p className="text-xs font-semibold uppercase tracking-wide text-outline">Source files</p>
-                <p className="mt-xs text-lg font-semibold text-on-background">{evidence.input_references.length}</p>
-              </div>
-              <div className="rounded-xl border border-hairline bg-surface-soft p-md">
-                <p className="text-xs font-semibold uppercase tracking-wide text-outline">Segments (total)</p>
-                <p className="mt-xs text-lg font-semibold text-on-background">{evidence.segments.length}</p>
-              </div>
-              <div className="rounded-xl border border-hairline bg-surface-soft p-md sm:col-span-2 lg:col-span-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-outline">Latest input</p>
-                <p className="mt-xs truncate text-sm font-medium text-on-surface" title={evidence.input_references.at(-1)?.filename}>
-                  {evidence.input_references.length === 0
-                    ? '—'
-                    : evidence.input_references[evidence.input_references.length - 1]?.filename ?? '—'}
-                </p>
+              <div className="grid gap-md grid-cols-2 md:grid-cols-6 lg:grid-cols-12">
+                <div className="rounded-xl border border-hairline bg-surface-soft p-md md:col-span-1 lg:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-outline">Source files</p>
+                  <p className="mt-xs text-lg font-semibold text-on-background">{evidence.input_references.length}</p>
+                </div>
+                <div className="rounded-xl border border-hairline bg-surface-soft p-md md:col-span-1 lg:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-outline">Segments (total)</p>
+                  <p className="mt-xs text-lg font-semibold text-on-background">{evidence.segments.length}</p>
+                </div>
+                <div className="col-span-2 rounded-xl border border-hairline bg-surface-soft p-md md:col-span-2 lg:col-span-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-outline">Latest document file</p>
+                  <p
+                    className="mt-xs truncate text-sm font-medium text-on-surface"
+                    title={evidence.latest_document_original_filename ?? undefined}
+                  >
+                    {evidence.latest_document_original_filename?.trim() ? evidence.latest_document_original_filename : '—'}
+                  </p>
+                </div>
+                <div className="col-span-2 rounded-xl border border-hairline bg-surface-soft p-md md:col-span-2 lg:col-span-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-outline">Document type</p>
+                  <div className="mt-xs flex flex-wrap items-start gap-sm">
+                    <DocumentTypeIcon
+                      contentType={evidence.latest_document_content_type}
+                      filename={evidence.latest_document_original_filename}
+                      sizeClass="text-[26px]"
+                      className="mt-0.5"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-on-surface">
+                        {documentTypeLabel(evidence.latest_document_content_type, evidence.latest_document_original_filename)}
+                      </p>
+                      {evidence.latest_document_content_type ? (
+                        <p
+                          className="mt-xxs truncate font-mono text-xs text-on-surface-variant"
+                          title={evidence.latest_document_content_type}
+                        >
+                          {evidence.latest_document_content_type}
+                        </p>
+                      ) : (
+                        <p className="mt-xxs text-xs text-on-surface-variant">MIME type not recorded</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="col-span-full border-t border-hairline pt-lg">
+              <div className="border-t border-hairline pt-lg">
                 <p className="mb-sm text-xs font-semibold uppercase tracking-wide text-outline">Translation (latest document)</p>
                 <p className="mb-md text-sm text-on-surface-variant">
                   Source and target from the most recently uploaded file, after OCR detects the primary language when source is set to
@@ -659,7 +700,7 @@ export function AuditEvidencePage({ initialCaseId, onOpenWorkspace, workspaceDis
                 )}
               </div>
 
-              <div className="col-span-full border-t border-hairline pt-lg">
+              <div className="border-t border-hairline pt-lg">
                 <p className="mb-sm text-xs font-semibold uppercase tracking-wide text-outline">Segment review</p>
                 <p className="mb-md text-sm text-on-surface-variant">
                   Counts reflect every segment in this export (all documents on the case). Pending means still in automatic review.
