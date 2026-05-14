@@ -24,6 +24,14 @@ jobs:
           cache: pip
           cache-dependency-path: apps/api/pyproject.toml
 
+      - name: Install OCR runtime (Tesseract + Poppler)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            tesseract-ocr \
+            tesseract-ocr-eng \
+            poppler-utils
+
       - name: Install API package
         run: pip install -e ".[dev]"
 

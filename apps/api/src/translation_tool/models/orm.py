@@ -31,6 +31,8 @@ class Document(Base):
     sha256_hex: Mapped[str] = mapped_column(String(64), index=True)
     storage_path: Mapped[str] = mapped_column(String(1024))
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_language: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    target_language: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     case: Mapped["Case"] = relationship(back_populates="documents")
 

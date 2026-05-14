@@ -29,7 +29,16 @@ def test_process_document_end_to_end(tmp_path, db_session):
         content_type="application/pdf",
         data=p.read_bytes(),
     )
-    process_document(db_session, settings, case_id=c.id, document_id=doc.id, provider=MockTranslationProvider())
+    process_document(
+        db_session,
+        settings,
+        case_id=c.id,
+        document_id=doc.id,
+        provider=MockTranslationProvider(),
+        source_language="auto",
+        target_language="en",
+    )
     segs = list(db_session.scalars(select(Segment).where(Segment.case_id == c.id)).all())
     assert len(segs) >= 1
     assert all(s.translated_text for s in segs)
+    assert all(s.detected_language == "fr" for s in segs)

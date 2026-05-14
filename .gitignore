@@ -10,3 +10,8 @@ dist/
 var/
 apps/api/build/
 node_modules/
+
+# Local environment (secrets); commit `.env.example` templates only
+.env
+.env.*
+!.env.example
