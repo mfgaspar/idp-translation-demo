@@ -856,8 +856,8 @@ export default function CaseWorkspace({
               </p>
             ) : null}
             <p className="rounded-xl border border-hairline bg-surface-soft px-md py-sm text-sm text-on-surface-variant">
-              This case is archived (all segments reviewed). Language choices and review actions are disabled until you
-              unarchive. Document upload stays off once a case has been processed.
+              This case is archived (all segments reviewed). Review actions are disabled until you unarchive. Document upload
+              stays off once a case has been processed.
             </p>
           </div>
         ) : null}
@@ -898,38 +898,40 @@ export default function CaseWorkspace({
         {translationLangsError ? (
           <p className="text-sm text-error">Could not load translation languages: {translationLangsError}</p>
         ) : null}
-        <div className="flex flex-wrap items-end gap-sm md:gap-md">
-          <label className="flex flex-col gap-xxs text-xs font-semibold uppercase tracking-wide text-outline">
-            Source language
-            <select
-              value={sourceLanguage}
-              onChange={(e) => setSourceLanguage(e.target.value)}
-              disabled={busy || translationLangs == null || workspaceLocked}
-              className={`${inputClass} min-w-[10rem]`}
-            >
-              {(translationLangs?.sources ?? []).map((o) => (
-                <option key={o.code} value={o.code}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-xxs text-xs font-semibold uppercase tracking-wide text-outline">
-            Target language
-            <select
-              value={targetLanguage}
-              onChange={(e) => setTargetLanguage(e.target.value)}
-              disabled={busy || translationLangs == null || workspaceLocked}
-              className={`${inputClass} min-w-[10rem]`}
-            >
-              {(translationLangs?.targets ?? []).map((o) => (
-                <option key={o.code} value={o.code}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        {!documentUploadLocked ? (
+          <div className="flex flex-wrap items-end gap-sm md:gap-md">
+            <label className="flex flex-col gap-xxs text-xs font-semibold uppercase tracking-wide text-outline">
+              Source language
+              <select
+                value={sourceLanguage}
+                onChange={(e) => setSourceLanguage(e.target.value)}
+                disabled={busy || translationLangs == null || workspaceLocked}
+                className={`${inputClass} min-w-[10rem]`}
+              >
+                {(translationLangs?.sources ?? []).map((o) => (
+                  <option key={o.code} value={o.code}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-xxs text-xs font-semibold uppercase tracking-wide text-outline">
+              Target language
+              <select
+                value={targetLanguage}
+                onChange={(e) => setTargetLanguage(e.target.value)}
+                disabled={busy || translationLangs == null || workspaceLocked}
+                className={`${inputClass} min-w-[10rem]`}
+              >
+                {(translationLangs?.targets ?? []).map((o) => (
+                  <option key={o.code} value={o.code}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
         {data != null &&
         (data.document_id != null || Boolean(data.content_type) || Boolean(data.original_filename?.trim())) ? (
           <div className="flex flex-wrap items-center gap-x-md gap-y-xs rounded-xl border border-hairline bg-surface-soft px-md py-sm">
@@ -984,38 +986,33 @@ export default function CaseWorkspace({
             </div>
           </div>
         ) : null}
-        <div className="flex flex-wrap items-end gap-sm md:gap-md">
-          <label className="flex min-w-0 w-full max-w-xl flex-col gap-xxs text-xs font-semibold uppercase tracking-wide text-outline sm:min-w-[12rem]">
-            Document
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,application/pdf,image/png,image/jpeg"
-              disabled={busy || workspaceLocked || documentUploadLocked}
-              className="w-full min-w-0 text-sm text-on-surface-variant file:mr-sm file:rounded-lg file:border-0 file:bg-primary-fixed file:px-sm file:py-xxs file:text-sm file:font-medium file:text-on-primary-fixed disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={
-              busy ||
-              parsedCaseId == null ||
-              translationLangs == null ||
-              translationLangsError != null ||
-              workspaceLocked ||
-              documentUploadLocked
-            }
-            className={`${btnPrimary} shrink-0`}
-            onClick={() => void onUploadAndProcess()}
-          >
-            Upload &amp; process
-          </button>
-        </div>
-        {documentUploadLocked && !workspaceLocked ? (
-          <p className="text-sm text-on-surface-variant">
-            Document upload is disabled for this case after processing. Use <span className="font-medium text-on-surface">New case</span>{' '}
-            if you need another file.
-          </p>
+        {!documentUploadLocked ? (
+          <div className="flex flex-wrap items-end gap-sm md:gap-md">
+            <label className="flex min-w-0 w-full max-w-xl flex-col gap-xxs text-xs font-semibold uppercase tracking-wide text-outline sm:min-w-[12rem]">
+              Document
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,application/pdf,image/png,image/jpeg"
+                disabled={busy || workspaceLocked}
+                className="w-full min-w-0 text-sm text-on-surface-variant file:mr-sm file:rounded-lg file:border-0 file:bg-primary-fixed file:px-sm file:py-xxs file:text-sm file:font-medium file:text-on-primary-fixed disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={
+                busy ||
+                parsedCaseId == null ||
+                translationLangs == null ||
+                translationLangsError != null ||
+                workspaceLocked
+              }
+              className={`${btnPrimary} shrink-0`}
+              onClick={() => void onUploadAndProcess()}
+            >
+              Upload &amp; process
+            </button>
+          </div>
         ) : null}
         {activeCaseId != null && data != null && data.segments.length > 0 ? (
           <div className="flex w-full flex-wrap items-center justify-between gap-sm border-t border-hairline pt-md md:gap-md">
