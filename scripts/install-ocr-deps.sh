@@ -9,4 +9,9 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   tesseract-ocr \
   tesseract-ocr-eng \
+  tesseract-ocr-chi-sim \
+  tesseract-ocr-chi-tra \
+  tesseract-ocr-fra \
+  tesseract-ocr-deu \
+  tesseract-ocr-spa \
   poppler-utils

@@ -14,6 +14,7 @@ import type { PageProps } from 'react-pdf'
 import type { ViewerResponse, ViewerSegment } from '../api/types'
 import { createCase, deleteCase, unarchiveCase } from '../api/cases'
 import { fetchTranslationLanguages, type TranslationLanguagesResponse } from '../api/translationLanguages'
+import { ConfirmDialog } from './ConfirmDialog'
 import { DocumentTypeIcon } from '../lib/DocumentTypeIcon'
 import {
   buildSegmentIndexById,
@@ -402,6 +403,7 @@ export default function CaseWorkspace({
   const [segmentReviewFilter, setSegmentReviewFilter] = useState<SegmentReviewFilter>('all')
   const [sourceLanguage, setSourceLanguage] = useState('auto')
   const [targetLanguage, setTargetLanguage] = useState('en')
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'unarchive' | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const extractedSegmentRefs = useRef(new Map<string, HTMLDivElement>())
   const translatedSegmentRefs = useRef(new Map<string, HTMLDivElement>())
@@ -809,16 +811,14 @@ export default function CaseWorkspace({
     [activeCaseId, data, onCasesChanged, onSelect],
   )
 
-  const onDeleteCase = useCallback(async () => {
+  const onDeleteCase = useCallback(() => {
+    if (activeCaseId == null || data == null) return
+    setConfirmAction('delete')
+  }, [activeCaseId, data])
+
+  const performDeleteCase = useCallback(async () => {
     const cid = activeCaseId
     if (cid == null || data == null) return
-    if (
-      !window.confirm(
-        'Delete this case and all uploaded documents? You cannot do this after every segment is reviewed (archived).',
-      )
-    ) {
-      return
-    }
     setError(null)
     setViewerIdleMessage(null)
     setCaseArchivedNotice(null)
@@ -841,16 +841,14 @@ export default function CaseWorkspace({
     }
   }, [activeCaseId, data, onCasesChanged, onCaseDeleted])
 
-  const onUnarchiveCase = useCallback(async () => {
+  const onUnarchiveCase = useCallback(() => {
+    if (activeCaseId == null || data == null) return
+    setConfirmAction('unarchive')
+  }, [activeCaseId, data])
+
+  const performUnarchiveCase = useCallback(async () => {
     const cid = activeCaseId
     if (cid == null || data == null) return
-    if (
-      !window.confirm(
-        'Return every segment on this document to pending automatic review? You can approve, reject, or edit again. Document upload remains disabled for this case.',
-      )
-    ) {
-      return
-    }
     setError(null)
     setViewerIdleMessage(null)
     setCaseArchivedNotice(null)
@@ -878,6 +876,34 @@ export default function CaseWorkspace({
     'rounded-xl border border-hairline-strong bg-canvas px-sm py-sm text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary'
 
   return (
+    <>
+      <ConfirmDialog
+        open={confirmAction === 'delete'}
+        title="Delete case?"
+        message="Delete this case and all uploaded documents? You cannot do this after every segment is reviewed (archived)."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        busy={busy}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => {
+          setConfirmAction(null)
+          void performDeleteCase()
+        }}
+      />
+      <ConfirmDialog
+        open={confirmAction === 'unarchive'}
+        title="Unarchive case?"
+        message="Return every segment on this document to pending automatic review? You can approve, reject, or edit again. Document upload remains disabled for this case."
+        confirmLabel="Unarchive"
+        cancelLabel="Cancel"
+        busy={busy}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => {
+          setConfirmAction(null)
+          void performUnarchiveCase()
+        }}
+      />
     <div className="rounded-xl border border-hairline bg-canvas p-lg shadow-sm">
       <div className="mb-lg flex flex-col gap-md">
         {workspaceLocked ? (
@@ -915,7 +941,7 @@ export default function CaseWorkspace({
               type="button"
               disabled={busy}
               className="rounded-xl border border-error-container bg-canvas px-md py-sm text-sm font-medium text-error transition-colors hover:bg-error-container/30 disabled:cursor-not-allowed disabled:opacity-45"
-              onClick={() => void onDeleteCase()}
+              onClick={onDeleteCase}
             >
               Delete case
             </button>
@@ -924,7 +950,7 @@ export default function CaseWorkspace({
               type="button"
               disabled={busy}
               className={btnSecondary}
-              onClick={() => void onUnarchiveCase()}
+              onClick={onUnarchiveCase}
             >
               Unarchive
             </button>
@@ -1494,5 +1520,6 @@ export default function CaseWorkspace({
         </p>
       )}
     </div>
+    </>
   )
 }

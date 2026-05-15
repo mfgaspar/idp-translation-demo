@@ -1,0 +1,29 @@
+.git
+**/.git
+.cursor
+docs
+agent-transcripts
+
+apps/web/node_modules
+apps/web/dist
+apps/api/.venv
+apps/api/tests
+apps/api/.pytest_cache
+apps/api/.mypy_cache
+apps/api/**/__pycache__
+apps/api/**/*.egg-info
+
+# Tessdata submodule metadata only (keep configs/ for line-level TSV when present).
+tessdata/.git
+
+# Default image: languages used by the demo OCR path (see translation_languages_config).
+# Remove these lines to bake in every *.traineddata under tessdata/ (very large, slow builds).
+tessdata/**
+!tessdata/eng.traineddata
+!tessdata/deu.traineddata
+!tessdata/fra.traineddata
+!tessdata/spa.traineddata
+!tessdata/chi_sim.traineddata
+!tessdata/chi_tra.traineddata
+!tessdata/configs
+!tessdata/configs/**

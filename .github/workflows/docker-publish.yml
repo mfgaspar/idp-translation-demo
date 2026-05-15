@@ -38,7 +38,8 @@ jobs:
       matrix:
         include:
           - component: api
-            context: ./apps/api
+            context: .
+            dockerfile: apps/api/Dockerfile
           - component: web
             context: ./apps/web
 
@@ -74,7 +75,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
-          file: ${{ matrix.context }}/Dockerfile
+          file: ${{ matrix.dockerfile || format('{0}/Dockerfile', matrix.context) }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

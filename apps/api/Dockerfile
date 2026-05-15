@@ -1,4 +1,5 @@
 # OCR runtime: Tesseract + Poppler (for PDF rasterization used by PyMuPDF).
+# Build from repository root: docker compose build api
 FROM python:3.12-slim-bookworm AS runtime
 
 RUN apt-get update \
@@ -7,23 +8,37 @@ RUN apt-get update \
         tesseract-ocr-eng \
         tesseract-ocr-chi-sim \
         tesseract-ocr-chi-tra \
+        tesseract-ocr-fra \
+        tesseract-ocr-deu \
+        tesseract-ocr-spa \
         poppler-utils \
+        ca-certificates \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Debian package installs the binary here; tessdata lives under /tessdata (see install-tessdata.sh).
+ENV TESSERACT_CMD=/usr/bin/tesseract \
+    TESSDATA_PREFIX=/tessdata
+
 WORKDIR /app
+
+COPY apps/api/docker/install-tessdata.sh /tmp/install-tessdata.sh
+COPY tessdata /tmp/tessdata-context
+RUN chmod +x /tmp/install-tessdata.sh \
+    && /tmp/install-tessdata.sh /tmp/tessdata-context \
+    && rm -rf /tmp/tessdata-context
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src
 
-COPY pyproject.toml alembic.ini /app/
-COPY alembic /app/alembic
-COPY src /app/src
+COPY apps/api/pyproject.toml apps/api/alembic.ini /app/
+COPY apps/api/alembic /app/alembic
+COPY apps/api/src /app/src
 
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir .
 
-# Writable volume mount points (compose binds a volume here).
 ENV STORAGE_ROOT=/data/storage \
     DATABASE_URL=sqlite:////data/app.db
 

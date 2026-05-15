@@ -12,6 +12,8 @@ services:
     environment:
       DATABASE_URL: sqlite:////data/app.db
       STORAGE_ROOT: /data/storage
+      TESSERACT_CMD: /usr/bin/tesseract
+      TESSDATA_PREFIX: /tessdata
     volumes:
       - api-data:/data
     expose:

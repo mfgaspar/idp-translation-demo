@@ -101,13 +101,34 @@ npm run preview
 
 ## Docker Compose
 
-Build and run API + web (web on port **8080** by default):
+Build and run API + web (web on port **8001** by default, or set `WEB_PORT`):
 
 ```bash
+# Optional: language packs for OCR (otherwise the image downloads eng + a few others at build time)
+git clone --depth 1 https://github.com/tesseract-ocr/tessdata tessdata
+
+# Optional: LLM and other API settings for Compose (copy template, then edit secrets locally)
+cp apps/api/.env.dockerfile.example apps/api/.env.dockerfile
+
 docker compose up --build
 ```
 
-Set `WEB_PORT` to change the host port. API data is stored in the `api-data` volume.
+Compose loads **`apps/api/.env.dockerfile`** into the API container via `env_file` (LLM provider, API keys, etc.). Values in `docker-compose.yml` under `environment:` override the same keys — e.g. `DATABASE_URL`, `STORAGE_ROOT`, and Tesseract paths stay container-specific.
+
+The API image installs **Tesseract** and **Poppler**, installs traineddata under `/tessdata` (from `tessdata/*.traineddata` in the build context when present, otherwise downloaded at build time), and sets `TESSERACT_CMD=/usr/bin/tesseract` and `TESSDATA_PREFIX=/tessdata`. By default `.dockerignore` only sends the languages used by this demo (`eng`, `deu`, `fra`, `spa`, `chi_sim`, `chi_tra`); remove those `tessdata/**` exceptions to bake in the full tessdata tree.
+
+API data (SQLite at `/data/app.db` and uploaded files under `/data/storage`) lives in the named volume **`api-data`**.
+
+### Reset database and storage
+
+To wipe cases, documents, and segments and run migrations on a clean DB (e.g. after schema changes or a bad local state):
+
+```bash
+docker compose down -v    # -v removes the api-data volume
+docker compose up --build
+```
+
+Without `-v`, `docker compose down` keeps the volume; only stopping containers.
 
 ## Tests
 
