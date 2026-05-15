@@ -18,7 +18,4 @@ node_modules/
 !.env.dockerfile.example
 
 # Tesseract traineddata (clone https://github.com/tesseract-ocr/tessdata into tessdata/)
-tessdata/**
-!tessdata/.gitkeep
-!tessdata/README.md
-!tessdata/LICENSE
+tessdata/
