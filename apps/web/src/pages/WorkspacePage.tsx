@@ -2,6 +2,7 @@ import CaseWorkspace from '../components/CaseWorkspace'
 
 type Props = {
   initialCaseId: number | null
+  onSelectedCaseChange?: (caseId: number | null) => void
   openFilePickerSignal: number
   onOpenFilePickerSignalConsumed?: () => void
   onBack: () => void
@@ -12,6 +13,7 @@ type Props = {
 
 export function WorkspacePage({
   initialCaseId,
+  onSelectedCaseChange,
   openFilePickerSignal,
   onOpenFilePickerSignalConsumed,
   onBack,
@@ -38,6 +40,7 @@ export function WorkspacePage({
       </header>
       <CaseWorkspace
         initialCaseId={initialCaseId}
+        onSelectedCaseChange={onSelectedCaseChange}
         openFilePickerSignal={openFilePickerSignal}
         onOpenFilePickerSignalConsumed={onOpenFilePickerSignalConsumed}
         onCasesChanged={onCasesChanged}

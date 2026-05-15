@@ -24,9 +24,8 @@ export default function App() {
   const [view, setView] = useState<AppView>('dashboard')
   const [cases, setCases] = useState<Awaited<ReturnType<typeof fetchCases>>>([])
   const [casesError, setCasesError] = useState<string | null>(null)
-  const [workspaceCaseId, setWorkspaceCaseId] = useState<number | null>(null)
+  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null)
   const [uploadSignal, setUploadSignal] = useState(0)
-  const [selectedDashboardCaseId, setSelectedDashboardCaseId] = useState<number | null>(null)
   const [exportHint, setExportHint] = useState<string | null>(null)
   const [workspaceReturnView, setWorkspaceReturnView] = useState<'dashboard' | 'audit'>('dashboard')
   const [dashboardScope, setDashboardScope] = useState<'active' | 'archived'>('active')
@@ -52,11 +51,15 @@ export default function App() {
     })
   }, [loadCases])
 
+  const selectCase = useCallback((caseId: number | null) => {
+    setSelectedCaseId(caseId)
+  }, [])
+
   const goWorkspace = useCallback(
     (caseId?: number | null, returnView: 'dashboard' | 'audit' = 'dashboard') => {
       if (!mdUp) return
       setWorkspaceReturnView(returnView)
-      if (caseId != null && Number.isFinite(caseId)) setWorkspaceCaseId(caseId)
+      if (caseId != null && Number.isFinite(caseId)) setSelectedCaseId(caseId)
       setView('workspace')
     },
     [mdUp],
@@ -75,7 +78,7 @@ export default function App() {
     setUploadBusy(true)
     try {
       const c = await createCase()
-      setWorkspaceCaseId(c.id)
+      setSelectedCaseId(c.id)
       await loadCases()
       setView('workspace')
       setUploadSignal((s) => s + 1)
@@ -87,7 +90,7 @@ export default function App() {
   }
 
   const onNavWorkspace = () => {
-    const fallback = workspaceCaseId ?? cases[0]?.id ?? null
+    const fallback = selectedCaseId ?? cases[0]?.id ?? null
     goWorkspace(fallback, 'dashboard')
   }
 
@@ -97,9 +100,9 @@ export default function App() {
 
   const onExportAudit = async () => {
     setExportHint(null)
-    const id = selectedDashboardCaseId
+    const id = selectedCaseId
     if (id == null) {
-      setExportHint('Select a case in the table first (click the case id).')
+      setExportHint('Select a case in the dashboard table first.')
       return
     }
     try {
@@ -139,24 +142,23 @@ export default function App() {
           error={casesError}
           onRetry={loadCases}
           onReview={(id) => {
-            setWorkspaceCaseId(id)
-            setSelectedDashboardCaseId(id)
+            selectCase(id)
             goWorkspace(id, 'dashboard')
           }}
           onAudit={(id) => {
-            setSelectedDashboardCaseId(id)
-            setWorkspaceCaseId(id)
+            selectCase(id)
             setView('audit')
           }}
-          selectedCaseId={selectedDashboardCaseId}
-          onSelectCase={setSelectedDashboardCaseId}
+          selectedCaseId={selectedCaseId}
+          onSelectCase={selectCase}
           searchQuery={dashboardSearchQuery}
           onSearchQueryChange={setDashboardSearchQuery}
           workspaceDisabled={narrowViewport}
         />
       ) : view === 'workspace' ? (
         <WorkspacePage
-          initialCaseId={workspaceCaseId}
+          initialCaseId={selectedCaseId}
+          onSelectedCaseChange={selectCase}
           openFilePickerSignal={uploadSignal}
           onOpenFilePickerSignalConsumed={onFilePickerSignalConsumed}
           onBack={() => setView(workspaceReturnView)}
@@ -165,10 +167,10 @@ export default function App() {
         />
       ) : view === 'audit' ? (
         <AuditEvidencePage
-          initialCaseId={selectedDashboardCaseId}
+          initialCaseId={selectedCaseId}
+          onSelectedCaseChange={selectCase}
           onOpenWorkspace={(id) => {
-            setWorkspaceCaseId(id)
-            setSelectedDashboardCaseId(id)
+            selectCase(id)
             goWorkspace(id, 'audit')
           }}
           workspaceDisabled={narrowViewport}

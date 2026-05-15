@@ -4,7 +4,7 @@
 
 **Goal:** Deliver a container-deployable, cloud-agnostic MVP that ingests PDF/images, extracts and translates text via a pluggable LLM connector, exposes REST APIs aligned to the architecture blueprint, persists case/segment/audit data under configurable storage policies, and provides a three-pane reviewer UI (original + extracted + translated with segment sync and human validation).
 
-**Architecture:** A single deployable **FastAPI** backend (`apps/api`) owns orchestration, persistence (SQLite dev / Postgres-ready), filesystem document store, append-only audit events, and structured logging. **React + Vite + TypeScript** (`apps/web`) implements the reviewer workspace with PDF.js for multi-page PDFs. OCR uses **PyMuPDF** for text-layer PDFs and **Tesseract** (pytesseract) for raster pages and images. Translation goes through a **`TranslationProvider` protocol** with a **mock provider** for CI and an **OpenAI-compatible HTTP provider** for private endpoints. Policy (TTL, whether content persists) is **environment-driven** so operators can match CMC restrictions without code changes.
+**Architecture:** A single deployable **FastAPI** backend (`apps/api`) owns orchestration, persistence (SQLite dev / Postgres-ready), filesystem document store, append-only audit events, and structured logging. **React + Vite + TypeScript** (`apps/web`) implements the reviewer workspace with PDF.js for multi-page PDFs. OCR uses **PyMuPDF** for text-layer PDFs and **Tesseract** (pytesseract) for raster pages and images. Translation goes through a **`TranslationProvider` protocol** with a **mock provider** for CI and an **OpenAI-compatible HTTP provider** for private endpoints. Policy (TTL, whether content persists) is **environment-driven** so operators can match deployment policy restrictions without code changes.
 
 **Tech Stack:** Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.x, Alembic, Uvicorn, pytest, httpx; Node 22, Vite 6, React 19, TypeScript 5, react-pdf; Docker / docker-compose; Tesseract OCR + poppler-utils (PDF rasterization).
 
@@ -1396,7 +1396,7 @@ Run `pytest` in API image context and `npm run build` for web on `push`.
 | UX‑3 confidence triage | Task 15 |
 | UX‑4 evidence export | Task 11 |
 
-**Gaps (explicit):** Full OIDC/OAuth2 client flow, mTLS between services, KMS encryption at rest, SIEM connectors, Redis/Celery async queue, automated PII redaction pipeline, and prompt-template artifact store are **not** fully implemented in this MVP plan; they are staged behind Tasks 13 stub, Task 16 single-container SQLite, and future epics. Add a follow-up plan if CMC mandates async workers before UI demo.
+**Gaps (explicit):** Full OIDC/OAuth2 client flow, mTLS between services, KMS encryption at rest, SIEM connectors, Redis/Celery async queue, automated PII redaction pipeline, and prompt-template artifact store are **not** fully implemented in this MVP plan; they are staged behind Tasks 13 stub, Task 16 single-container SQLite, and future epics. Add a follow-up plan if policy mandates async workers before UI demo.
 
 **Placeholder scan:** No `TBD` steps; open gaps listed above in prose only.
 

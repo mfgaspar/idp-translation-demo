@@ -43,6 +43,7 @@ type EvidencePayload = {
 
 type Props = {
   initialCaseId: number | null
+  onSelectedCaseChange?: (caseId: number | null) => void
   onOpenWorkspace: (caseId: number) => void
   /** Below `md`: hide navigation into the segment workspace. */
   workspaceDisabled?: boolean
@@ -463,7 +464,12 @@ function CaseLifecycleBanner({ evidence }: { evidence: EvidencePayload }) {
   )
 }
 
-export function AuditEvidencePage({ initialCaseId, onOpenWorkspace, workspaceDisabled = false }: Props) {
+export function AuditEvidencePage({
+  initialCaseId,
+  onSelectedCaseChange,
+  onOpenWorkspace,
+  workspaceDisabled = false,
+}: Props) {
   const [caseIdInput, setCaseIdInput] = useState(initialCaseId != null ? String(initialCaseId) : '')
   const [evidence, setEvidence] = useState<EvidencePayload | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -515,12 +521,13 @@ export function AuditEvidencePage({ initialCaseId, onOpenWorkspace, workspaceDis
         return
       }
       setEvidence(parsed)
+      onSelectedCaseChange?.(parsed.case_id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [onSelectedCaseChange])
 
   useEffect(() => {
     if (initialCaseId == null) return

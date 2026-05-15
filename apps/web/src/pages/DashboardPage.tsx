@@ -239,17 +239,22 @@ export function DashboardPage({
                   return (
                     <tr
                       key={row.id}
-                      className={`group transition-colors hover:bg-surface-container-low ${selected ? 'bg-tint-lavender/50' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-selected={selected}
+                      className={`group cursor-pointer transition-colors hover:bg-surface-container-low ${selected ? 'bg-tint-lavender/50 ring-1 ring-inset ring-primary/25' : ''}`}
+                      onClick={() => onSelectCase(row.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onSelectCase(row.id)
+                        }
+                      }}
                     >
                       <td className="px-lg py-lg">
-                        <button
-                          type="button"
-                          className="text-left font-medium text-primary hover:underline"
-                          onClick={() => onSelectCase(row.id)}
-                          title={row.external_ref}
-                        >
+                        <span className="font-medium text-primary" title={row.external_ref}>
                           {caseIdDisplay(row)}
-                        </button>
+                        </span>
                       </td>
                       <td className="px-lg py-lg">
                         <div className="flex justify-center">
@@ -324,14 +329,20 @@ export function DashboardPage({
                                 ? 'Review opens the workspace — use a tablet or desktop (wider screen).'
                                 : undefined
                             }
-                            onClick={() => onReview(row.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onReview(row.id)
+                            }}
                           >
                             Review
                           </button>
                           <button
                             type="button"
                             className="rounded-lg border border-hairline-strong bg-canvas px-lg py-xs text-sm font-medium text-primary hover:bg-surface-container-low"
-                            onClick={() => onAudit(row.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onAudit(row.id)
+                            }}
                           >
                             Audit
                           </button>

@@ -15,7 +15,13 @@ import type { ViewerResponse, ViewerSegment } from '../api/types'
 import { createCase, deleteCase, unarchiveCase } from '../api/cases'
 import { fetchTranslationLanguages, type TranslationLanguagesResponse } from '../api/translationLanguages'
 import { DocumentTypeIcon } from '../lib/DocumentTypeIcon'
-import { confidenceStyle, documentTypeLabel, languagePillClass } from '../lib/caseDisplay'
+import {
+  buildSegmentIndexById,
+  confidenceStyle,
+  documentTypeLabel,
+  languagePillClass,
+  segmentOrdinalLabel,
+} from '../lib/caseDisplay'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
@@ -260,6 +266,16 @@ function errorMessageFromUnknown(e: unknown): string {
   return e instanceof Error ? e.message : 'Request failed'
 }
 
+type SegmentReviewFilter = 'all' | 'pending' | 'approved' | 'rejected'
+
+function segmentMatchesReviewFilter(status: string, filter: SegmentReviewFilter): boolean {
+  if (filter === 'all') return true
+  if (filter === 'pending') return status === 'auto'
+  if (filter === 'approved') return status === 'approved'
+  if (filter === 'rejected') return status === 'rejected'
+  return true
+}
+
 function countSegmentReviewStats(segments: { status: string }[]) {
   let approved = 0
   let rejected = 0
@@ -348,6 +364,7 @@ async function runProcess(
 
 export type CaseWorkspaceProps = {
   initialCaseId?: number | null
+  onSelectedCaseChange?: (caseId: number | null) => void
   openFilePickerSignal?: number
   /** Called after the hidden file input is triggered from `openFilePickerSignal` so the parent can clear the signal (avoids reopening the picker when returning to Workspace). */
   onOpenFilePickerSignalConsumed?: () => void
@@ -358,6 +375,7 @@ export type CaseWorkspaceProps = {
 
 export default function CaseWorkspace({
   initialCaseId = null,
+  onSelectedCaseChange,
   openFilePickerSignal = 0,
   onOpenFilePickerSignalConsumed,
   onCasesChanged,
@@ -381,6 +399,7 @@ export default function CaseWorkspace({
   const [translationLangs, setTranslationLangs] = useState<TranslationLanguagesResponse | null>(null)
   const [translationLangsError, setTranslationLangsError] = useState<string | null>(null)
   const [segmentReviewBusyId, setSegmentReviewBusyId] = useState<string | null>(null)
+  const [segmentReviewFilter, setSegmentReviewFilter] = useState<SegmentReviewFilter>('all')
   const [sourceLanguage, setSourceLanguage] = useState('auto')
   const [targetLanguage, setTargetLanguage] = useState('en')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -439,6 +458,7 @@ export default function CaseWorkspace({
       setData(v)
       setSelected(v.segments[0]?.segment_id ?? null)
       setPage(1)
+      onSelectedCaseChange?.(id)
       return true
     } catch (e) {
       if (opts?.cancelled?.()) return false
@@ -454,7 +474,7 @@ export default function CaseWorkspace({
       setError(raw.length > 400 ? `${raw.slice(0, 400)}…` : raw)
       return false
     }
-  }, [])
+  }, [onSelectedCaseChange])
 
   useEffect(() => {
     const id = Number(debouncedCaseIdInput)
@@ -530,13 +550,14 @@ export default function CaseWorkspace({
       setData(null)
       setCaseId(null)
       setSelected(null)
+      onSelectedCaseChange?.(c.id)
       onCasesChanged?.()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create case')
     } finally {
       setBusy(false)
     }
-  }, [onCasesChanged])
+  }, [onCasesChanged, onSelectedCaseChange])
 
   const onUploadAndProcess = useCallback(async () => {
     if (parsedCaseId == null) {
@@ -660,6 +681,20 @@ export default function CaseWorkspace({
     const to = languagePillClass(data.target_language)
     return { from, to, isAuto: data.source_language === 'auto' }
   }, [data])
+
+  const segmentIndexById = useMemo(
+    () => (data?.segments.length ? buildSegmentIndexById(data.segments) : new Map<string, number>()),
+    [data?.segments],
+  )
+
+  const filteredSegments = useMemo(() => {
+    if (data == null) return []
+    return data.segments.filter((s) => segmentMatchesReviewFilter(s.status, segmentReviewFilter))
+  }, [data, segmentReviewFilter])
+
+  useEffect(() => {
+    setSegmentReviewFilter('all')
+  }, [data?.case_id, data?.document_id])
 
   useEffect(() => {
     if (data == null) return
@@ -1015,57 +1050,57 @@ export default function CaseWorkspace({
           </div>
         ) : null}
         {activeCaseId != null && data != null && data.segments.length > 0 ? (
-          <div className="flex w-full flex-wrap items-center justify-between gap-sm border-t border-hairline pt-md md:gap-md">
-            <span className="text-xs font-semibold uppercase tracking-wide text-outline">Segment actions</span>
-            <button
-              type="button"
-              disabled={busy || workspaceLocked}
-              className={`${btnPrimary} shrink-0`}
-              onClick={() => void runReviewBulk('approve')}
+          <div className="flex w-full flex-col gap-sm border-t border-hairline pt-md md:gap-md">
+            <div className="flex w-full flex-wrap items-center justify-between gap-sm md:gap-md">
+              <span className="text-xs font-semibold uppercase tracking-wide text-outline">Segment actions</span>
+              <button
+                type="button"
+                disabled={busy || workspaceLocked}
+                className={`${btnPrimary} shrink-0`}
+                onClick={() => void runReviewBulk('approve')}
+              >
+                Approve all segments
+              </button>
+            </div>
+            <div
+              className="flex flex-wrap items-center gap-sm"
+              role="group"
+              aria-label="Filter segments by review status"
             >
-              Approve all segments
-            </button>
+              <span className="text-xs font-semibold uppercase tracking-wide text-outline">Show</span>
+              {(
+                [
+                  { key: 'all' as const, label: 'All', count: data.segments.length },
+                  { key: 'pending' as const, label: 'Pending', count: segmentReviewStats?.pending ?? 0 },
+                  { key: 'approved' as const, label: 'Approved', count: segmentReviewStats?.approved ?? 0 },
+                  { key: 'rejected' as const, label: 'Rejected', count: segmentReviewStats?.rejected ?? 0 },
+                ] as const
+              ).map(({ key, label, count }) => {
+                const isOn = segmentReviewFilter === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={isOn}
+                    className={`rounded-lg border px-sm py-xxs text-xs font-semibold transition-colors ${
+                      isOn
+                        ? 'border-primary bg-primary text-on-primary shadow-sm'
+                        : 'border-hairline bg-canvas text-on-surface-variant hover:border-hairline-strong hover:bg-surface-soft'
+                    }`}
+                    onClick={() => setSegmentReviewFilter(key)}
+                  >
+                    {label}
+                    <span className={`ml-xs tabular-nums ${isOn ? 'text-on-primary/90' : 'text-outline'}`}>{count}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         ) : null}
       </div>
       {error ? <p className="mb-md text-sm text-error">{error}</p> : null}
       {data ? (
         <>
-          {segmentReviewStats != null ? (
-            <div className="mb-md flex flex-wrap items-center gap-md rounded-xl border border-hairline bg-surface-soft px-md py-sm">
-              <div className="flex flex-wrap items-center gap-x-md gap-y-xs text-sm">
-                <span className="text-on-surface">
-                  <span className="font-semibold">Approved</span>{' '}
-                  <span className="tabular-nums text-on-surface-variant">{segmentReviewStats.approved}</span>
-                </span>
-                <span className="text-outline" aria-hidden>
-                  ·
-                </span>
-                <span className="text-on-surface">
-                  <span className="font-semibold">Rejected</span>{' '}
-                  <span className="tabular-nums text-on-surface-variant">{segmentReviewStats.rejected}</span>
-                </span>
-                <span className="text-outline" aria-hidden>
-                  ·
-                </span>
-                <span className="text-on-surface">
-                  <span className="font-semibold">Pending</span>{' '}
-                  <span className="tabular-nums text-on-surface-variant">{segmentReviewStats.pending}</span>
-                </span>
-                {segmentReviewStats.edited > 0 ? (
-                  <>
-                    <span className="text-outline" aria-hidden>
-                      ·
-                    </span>
-                    <span className="text-on-surface">
-                      <span className="font-semibold">Edited</span>{' '}
-                      <span className="tabular-nums text-on-surface-variant">{segmentReviewStats.edited}</span>
-                    </span>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
           {data.segments.length > 0 ? (
             <details
               open
@@ -1078,8 +1113,14 @@ export default function CaseWorkspace({
                 <section className="min-h-[120px] rounded-xl border border-hairline bg-canvas p-md">
                   <h3 className="mb-sm text-xs font-semibold uppercase tracking-wider text-outline">Extracted · full document</h3>
                   <ul className="m-0 max-h-[55vh] list-none space-y-xs overflow-auto p-0">
-                    {data.segments.map((s) => {
+                    {filteredSegments.length === 0 ? (
+                      <li className="px-sm py-md text-sm text-on-surface-variant">
+                        No {segmentReviewFilter === 'all' ? '' : `${segmentReviewFilter} `}segments match this filter.
+                      </li>
+                    ) : null}
+                    {filteredSegments.map((s) => {
                       const conf = confidenceStyle(s.confidence)
+                      const segN = segmentIndexById.get(s.segment_id)
                       return (
                         <li key={s.segment_id}>
                           <div
@@ -1099,6 +1140,14 @@ export default function CaseWorkspace({
                               onClick={() => onSelect(s)}
                             >
                               <span className="mb-xxs block text-[11px] font-semibold uppercase tracking-wide text-outline">
+                                {segN != null ? (
+                                  <>
+                                    {segmentOrdinalLabel(segN)}
+                                    <span className="mx-xs text-outline" aria-hidden>
+                                      ·
+                                    </span>
+                                  </>
+                                ) : null}
                                 p{s.page_number}
                                 {s.status !== 'auto' ? (
                                   <span className="ml-xs font-semibold normal-case text-primary">· {s.status}</span>
@@ -1136,8 +1185,14 @@ export default function CaseWorkspace({
                 <section className="min-h-[120px] rounded-xl border border-hairline bg-canvas p-md">
                   <h3 className="mb-sm text-xs font-semibold uppercase tracking-wider text-outline">Translated · full document</h3>
                   <ul className="m-0 max-h-[55vh] list-none space-y-xs overflow-auto p-0">
-                    {data.segments.map((s) => {
+                    {filteredSegments.length === 0 ? (
+                      <li className="px-sm py-md text-sm text-on-surface-variant">
+                        No {segmentReviewFilter === 'all' ? '' : `${segmentReviewFilter} `}segments match this filter.
+                      </li>
+                    ) : null}
+                    {filteredSegments.map((s) => {
                       const conf = confidenceStyle(s.confidence)
+                      const segN = segmentIndexById.get(s.segment_id)
                       return (
                         <li key={s.segment_id}>
                           <div
@@ -1157,6 +1212,14 @@ export default function CaseWorkspace({
                               onClick={() => onSelect(s)}
                             >
                               <span className="mb-xxs block text-[11px] font-semibold uppercase tracking-wide text-outline">
+                                {segN != null ? (
+                                  <>
+                                    {segmentOrdinalLabel(segN)}
+                                    <span className="mx-xs text-outline" aria-hidden>
+                                      ·
+                                    </span>
+                                  </>
+                                ) : null}
                                 p{s.page_number}
                                 {s.status !== 'auto' ? (
                                   <span className="ml-xs font-semibold normal-case text-primary">· {s.status}</span>
@@ -1246,7 +1309,7 @@ export default function CaseWorkspace({
                             onRenderSuccess={onTranslatedPdfPageRendered}
                           />
                           <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-sm">
-                            {data.segments
+                            {filteredSegments
                               .filter((s) => s.page_number === page)
                               .flatMap((s) => {
                                 const bb = segmentBbox(s)
@@ -1317,7 +1380,7 @@ export default function CaseWorkspace({
                             }}
                           />
                           <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-sm">
-                          {data.segments
+                          {filteredSegments
                             .filter((s) => s.page_number === pageForSegmentLayout)
                             .flatMap((s) => {
                               const bb = segmentBbox(s)

@@ -31,6 +31,25 @@ export function docRowIcon(
   return { icon: 'draft', color: 'text-brand-pink', shortLabel: 'File' }
 }
 
+/** 1-based S1, S2, … in document order (page ascending, then viewer segment order). */
+export function buildSegmentIndexById(
+  segments: { segment_id: string; page_number: number }[],
+): Map<string, number> {
+  const sorted = [...segments]
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => {
+      if (a.s.page_number !== b.s.page_number) return a.s.page_number - b.s.page_number
+      return a.i - b.i
+    })
+  const map = new Map<string, number>()
+  sorted.forEach(({ s }, idx) => map.set(s.segment_id, idx + 1))
+  return map
+}
+
+export function segmentOrdinalLabel(index: number): string {
+  return `S${index}`
+}
+
 export function caseIdDisplay(row: { id: number; external_ref: string }): string {
   const ref = row.external_ref
   if (ref.length <= 24 && !ref.startsWith('ui-')) return `#${ref}`
