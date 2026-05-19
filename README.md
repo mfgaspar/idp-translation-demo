@@ -110,10 +110,12 @@ git clone --depth 1 https://github.com/tesseract-ocr/tessdata tessdata
 # Optional: LLM and other API settings for Compose (copy template, then edit secrets locally)
 cp apps/api/.env.dockerfile.example apps/api/.env.dockerfile
 
-docker compose up --build
+./scripts/compose.sh up --build
 ```
 
 Compose loads **`apps/api/.env.dockerfile`** into the API container via `env_file` (LLM provider, API keys, etc.). Values in `docker-compose.yml` under `environment:` override the same keys — e.g. `DATABASE_URL`, `STORAGE_ROOT`, and Tesseract paths stay container-specific.
+
+When `apps/api/dev.db` exists (or `./dev.db` at repo root), `./scripts/compose.sh` automatically loads `docker-compose.devdb.yml` and bind-mounts that file to `/data/app.db` in the API container.
 
 The API image installs **Tesseract** and **Poppler**, installs traineddata under `/tessdata` (from `tessdata/*.traineddata` in the build context when present, otherwise downloaded at build time), and sets `TESSERACT_CMD=/usr/bin/tesseract` and `TESSDATA_PREFIX=/tessdata`. By default `.dockerignore` only sends the languages used by this demo (`eng`, `deu`, `fra`, `spa`, `chi_sim`, `chi_tra`); remove those `tessdata/**` exceptions to bake in the full tessdata tree.
 
@@ -124,8 +126,8 @@ API data (SQLite at `/data/app.db` and uploaded files under `/data/storage`) liv
 To wipe cases, documents, and segments and run migrations on a clean DB (e.g. after schema changes or a bad local state):
 
 ```bash
-docker compose down -v    # -v removes the api-data volume
-docker compose up --build
+./scripts/compose.sh down -v    # -v removes the api-data volume
+./scripts/compose.sh up --build
 ```
 
 Without `-v`, `docker compose down` keeps the volume; only stopping containers.

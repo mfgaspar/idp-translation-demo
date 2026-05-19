@@ -1,0 +1,9 @@
+# Optional override: when loaded, bind local dev.db into the API container DB path.
+services:
+  api:
+    volumes:
+      - type: bind
+        source: ${DEV_DB_PATH:?Set DEV_DB_PATH to the dev.db file path}
+        target: /data/app.db
+        bind:
+          create_host_path: false

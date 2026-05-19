@@ -10,6 +10,7 @@ dist/
 var/
 apps/api/build/
 node_modules/
+.DS_Store
 
 # Local environment (secrets); commit `.env.example` templates only
 .env
